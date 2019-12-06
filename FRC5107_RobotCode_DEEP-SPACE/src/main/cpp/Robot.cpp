@@ -14,41 +14,41 @@
 #include <frc/Watchdog.h>
 #include <frc/smartdashboard/SmartDashboard.h>
 
-bool testMode = false;
-float speedMult = -0.75;
-bool runLiftRaise = false;
+bool testMode = false; //puts the robot in debugging mode, functions already in place to do thius
+float speedMult = -0.75; //the drive speed multiplier
+bool runLiftRaise = false; //fuck if i know
 
 Robot::Robot() 
 {
-    snowBlowers = std::unique_ptr<VictorSPX>(new VictorSPX(1));
-    liftMotor = std::unique_ptr<VictorSPX>(new VictorSPX(0));
+    snowBlowers = std::unique_ptr<VictorSPX>(new VictorSPX(1)); //this is all setting up the smart pointers for use, so EVERYTHING is declared where it is
+    liftMotor = std::unique_ptr<VictorSPX>(new VictorSPX(0)); //notice these are not PWMVictorSPX / PWMTalonSRX!!!! These are running on the CAN bus!!!
     leftMotor = std::unique_ptr<TalonSRX>(new TalonSRX(1));
     rightMotor = std::unique_ptr<TalonSRX>(new TalonSRX(0));
-    driveCont = std::shared_ptr<frc::XboxController>(new frc::XboxController(0));
-    leftConsole = std::shared_ptr<frc::Joystick>(new frc::Joystick(1));
-    frontLeft = std::shared_ptr<frc::Spark>(new frc::Spark(0));
+    driveCont = std::shared_ptr<frc::XboxController>(new frc::XboxController(0)); //gasmepad on port 0
+    leftConsole = std::shared_ptr<frc::Joystick>(new frc::Joystick(1)); //joydtick (controller console?) on port 1
+    frontLeft = std::shared_ptr<frc::Spark>(new frc::Spark(0)); //but THESE are PWM!! these are also used for driving!
     rearLeft = std::shared_ptr<frc::Spark>(new frc::Spark(1));
     frontRight = std::shared_ptr<frc::Spark>(new frc::Spark(2));
     rearRight = std::shared_ptr<frc::Spark>(new frc::Spark(3));
-    robotDrive = std::unique_ptr<frc::RobotDrive>(new frc::RobotDrive(frontLeft, rearLeft, frontRight, rearRight));
+    robotDrive = std::unique_ptr<frc::RobotDrive>(new frc::RobotDrive(frontLeft, rearLeft, frontRight, rearRight)); //sets up the robot drive for driving
     cableStop = std::unique_ptr<frc::DigitalInput>(new frc::DigitalInput(0));
     rearCylinder = std::unique_ptr<frc::Solenoid>(new frc::Solenoid(0, 2));
     frontCylinder = std::unique_ptr<frc::Solenoid>(new frc::Solenoid(0, 1));
     suckPos = std::unique_ptr<frc::Solenoid>(new frc::Solenoid(0, 0));
     suckEnable = std::unique_ptr<frc::Solenoid>(new frc::Solenoid(1, 0));
     releaseSuck = std::unique_ptr<frc::Solenoid>(new frc::Solenoid(1, 1));
-    pressureGauge = std::unique_ptr<frc::AnalogInput>(new frc::AnalogInput(0));
-    liftMax = std::unique_ptr<frc::DigitalInput>(new frc::DigitalInput(2));
+    pressureGauge = std::unique_ptr<frc::AnalogInput>(new frc::AnalogInput(0)); //very helpful pressure reading feedback that sends back to the driver stationfor a direct feedback on the pressure reading
+    liftMax = std::unique_ptr<frc::DigitalInput>(new frc::DigitalInput(2));//signal inputs, either high or low, i think its pullup high? IDK check the goddamn RoboRIO page
     liftMin = std::unique_ptr<frc::DigitalInput>(new frc::DigitalInput(1));
     discIn = std::unique_ptr<frc::DigitalInput>(new frc::DigitalInput(3));
     discDet = std::unique_ptr<frc::DigitalInput>(new frc::DigitalInput(4));
 
-    netTabInt = nt::NetworkTableInstance::GetDefault();
-    netTab = netTabInt.GetTable("pressureReader");
-    comp = std::unique_ptr<frc::Compressor>(new frc::Compressor(0));
-    usbCam1 = frc::CameraServer::GetInstance()->StartAutomaticCapture(0);
+    netTabInt = nt::NetworkTableInstance::GetDefault(); //network tables!!!! SO UCKI?g HELP FUL FOR QUICK DIAGNOSTICS!!!!!
+    netTab = netTabInt.GetTable("pressureReader"); //basically just sets up a table to send the pressure readings too, easy money
+    comp = std::unique_ptr<frc::Compressor>(new frc::Compressor(0)); //sets the PCM Module the pressure switch/compressor is on
+    usbCam1 = frc::CameraServer::GetInstance()->StartAutomaticCapture(0);//usb cameras!!!!! sets whcih port on the rio it is, you only have 2
     usbCam2 = frc::CameraServer::GetInstance()->StartAutomaticCapture(1);
-    alreadyThreaded = false;
+    alreadyThreaded = false; //something to do with threading... check later on this ig?
 }
 
 void Robot::raiseHook()
@@ -57,15 +57,15 @@ void Robot::raiseHook()
     
     if(liftMax->Get() == false)
     {
-        liftMotor->Set(motorcontrol::ControlMode::PercentOutput, liftSpeed);
+        liftMotor->Set(motorcontrol::ControlMode::PercentOutput, liftSpeed); //sets how ast the hook system can raise up, as a percentage of max speed (out of 1)
     }
     else
     {
-        liftMotor->Set(motorcontrol::ControlMode::PercentOutput, 0);
+        liftMotor->Set(motorcontrol::ControlMode::PercentOutput, 0); //stops the rasing
     }
 }
 
-void Robot::lowerHook()
+void Robot::lowerHook() //literally the opposite of above
 {
     float liftSpeed = 0.75;
     if(leftConsole->GetRawButton(13))
@@ -83,7 +83,7 @@ void Robot::lowerHook()
     
 }
 
-void Robot::driveCode()
+void Robot::driveCode() //function fordriving the goddamn robot
 {
     float leftSpeed = 0;
     float rightSpeed = 0;
@@ -112,19 +112,19 @@ void Robot::driveCode()
     rightSpeed *= speedMult;
     robotDrive->TankDrive(leftSpeed, rightSpeed, false);
 }
-void Robot::RobotInit()
+void Robot::RobotInit() //stupidly necessary, dont remember what the fuck goes on here but keep it
 {
     m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
     m_chooser.AddOption(kAutoNameCustom, kAutoNameCustom);
     frc::SmartDashboard::PutData("Auto Modes", &m_chooser);
 }
 
-void Robot::RobotPeriodic(){}
-void Robot::AutonomousInit()
+void Robot::RobotPeriodic(){} //necessary to define, uncessary to use- just what the robot does when disabled, which, is nothing, sooooo
+void Robot::AutonomousInit() //what happens when autonomous mode starts
 {
 }
 
-void Robot::AutonomousPeriodic()
+void Robot::AutonomousPeriodic() //what happens in autonomous mode
 {
     driveCode();
     if(driveCont->GetAButton())
@@ -151,7 +151,7 @@ void Robot::AutonomousPeriodic()
     }
 }
 
-void Robot::raiseLift()
+void Robot::raiseLift() //pull the lift upwards into position
 {
     
     if(cableStop->Get() != true)
@@ -171,18 +171,23 @@ void Robot::TeleopInit()
 {
 }
 
+
+//map functiomn borowed from arduino website, takes a number, then the range the number is from (such as analog inputs which is a defined range) and maps it to a different range (can exceed the range, just a base range though)
 long map(long x, long in_min, long in_max, long out_min, long out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-void Robot::TeleopPeriodic() 
+void Robot::TeleopPeriodic()  //repeat so lojng as the robot is in teleop mode
 { 
-    frc::SmartDashboard::PutBoolean("SnowBlower Stop", cableStop->Get());
+    frc::SmartDashboard::PutBoolean("SnowBlower Stop", cableStop->Get()); //checks if the limit switch was activited
+
+    //the following gives the raw readout of the presure gauge, and also maps the values. the input range is 0 - 4095, but has to map to 0 - 120
     frc::SmartDashboard::PutString("pressure", std::to_string(map(pressureGauge->GetValue(), 0, 4095, 0, 120)));
     frc::SmartDashboard::PutNumber("pressureRead", map(pressureGauge->GetValue(), 0, 4095, 0, 120));
     std::cout<<"Pressure Direct Read: "<<std::to_string(pressureGauge->GetValue())<<std::endl;
     std::cout<<"Pressure: "<<std::to_string(map(pressureGauge->GetValue(), 0, 4095, 0, 120))<<std::endl;
-    if(driveCont->GetAButton())
+
+    if(driveCont->GetAButton()) //get A button from gamepad
     {
         raiseLift();
     }
@@ -241,7 +246,7 @@ void Robot::TeleopPeriodic()
             liftMotor->Set(motorcontrol::ControlMode::PercentOutput, 0.0);
         }
     }
-    if(leftConsole->GetRawButton(15))
+    if(leftConsole->GetRawButton(15)) //check if the switch is on/off to turn on/off the compressor to minimize current draw
     {
         if(comp->Enabled() == true)
         {
@@ -256,8 +261,10 @@ void Robot::TeleopPeriodic()
         }
     }
     roboLift();
-    suckPos->Set(leftConsole->GetRawButton(3));
-    driveCode();
+    suckPos->Set(leftConsole->GetRawButton(3)); //position of the succ mech even though it was replaced with a hook
+    driveCode(); //drive
+
+    //the following was to put the info to the dashboard for debugging, put dsit to the dashboard AND console output
     frc::SmartDashboard::PutBoolean("0", cableStop->Get());
     std::cout<<"0: "<<std::to_string(cableStop->Get())<<std::endl;
     frc::SmartDashboard::PutBoolean("1", liftMin->Get());
@@ -270,7 +277,7 @@ void Robot::TeleopPeriodic()
      std::cout<<"4: "<<std::to_string(discDet->Get())<<std::endl;
 }
 
-void Robot::roboLift()
+void Robot::roboLift() //this was our last minute attempt to lift the robot up, it just burnt out fuses-- too many solenoids at once
 {
     if(driveCont->GetTriggerAxis(frc::GenericHID::kLeftHand)>=1)
     {
@@ -290,7 +297,7 @@ void Robot::roboLift()
     }
 }
 
-void Robot::TestPeriodic() {}
+void Robot::TestPeriodic() {} //still no fucking clue what this does
 
 #ifndef RUNNING_FRC_TESTS
 int main() { return frc::StartRobot<Robot>(); }
